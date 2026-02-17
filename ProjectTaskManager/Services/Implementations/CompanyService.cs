@@ -7,11 +7,19 @@ namespace ProjectTaskManager.Services.Implementations
     public class CompanyService : ICompanyService
     {
         private readonly IRepository<Company> _companyRepository;
+        private readonly IRepository<Project> _projectRepository;
+        private readonly IRepository<Employee> _employeeRepository;
         private readonly ILogger<CompanyService> _logger;
 
-        public CompanyService(IRepository<Company> companyRepository, ILogger<CompanyService> logger)
+        public CompanyService(
+            IRepository<Company> companyRepository,
+            IRepository<Project> projectRepository,
+            IRepository<Employee> employeeRepository,
+            ILogger<CompanyService> logger)
         {
             _companyRepository = companyRepository;
+            _projectRepository = projectRepository;
+            _employeeRepository = employeeRepository;
             _logger = logger;
         }
 
@@ -47,11 +55,6 @@ namespace ProjectTaskManager.Services.Implementations
         {
             try
             {
-                if (await CompanyNameExistsAsync(company.Name))
-                {
-                    throw new InvalidOperationException($"Company with name '{company.Name}' already exists.");
-                }
-
                 _logger.LogInformation("Creating new company: {Name}", company.Name);
                 await _companyRepository.AddAsync(company);
                 return company;
@@ -63,18 +66,14 @@ namespace ProjectTaskManager.Services.Implementations
             }
         }
 
-        public async Task<Company> UpdateCompanyAsync(Company company,string name,string username)
-
+        public async Task<Company> UpdateCompanyAsync(Company company, string name, string username)
         {
-                
             try
             {
-               
                 _logger.LogInformation("Updating company with ID: {Id}", company.Id);
                 company.Name = name;
                 company.UpdatedBy = username;
-                company.UpdatedAt = DateTime.Now;
-
+                company.UpdatedAt = DateTime.UtcNow;
 
                 _companyRepository.Update(company);
                 return company;
@@ -90,13 +89,11 @@ namespace ProjectTaskManager.Services.Implementations
         {
             try
             {
-                
                 _logger.LogInformation("Deleting company with id: {Id}", company.Id);
                 company.UpdatedBy = username;
-                company.InactiveDate = DateTime.Now;
-                company.UpdatedAt = DateTime.Now;
+                company.InactiveDate = DateTime.UtcNow;
+                company.UpdatedAt = DateTime.UtcNow;
                 _companyRepository.Update(company);
-
 
                 return true;
             }
@@ -106,16 +103,10 @@ namespace ProjectTaskManager.Services.Implementations
                 throw;
             }
         }
-        public void SaveChanges() {
+
+        public void SaveChanges()
+        {
             _companyRepository.SaveChanges();
-       
-          
-
-
-
-
-
-            // Assuming the repository pattern handles saving changes, this might be empty.
         }
 
         public async Task<bool> CompanyExistsAsync(int id)
@@ -128,14 +119,14 @@ namespace ProjectTaskManager.Services.Implementations
             return await _companyRepository.AnyAsync(c => c.Name == name);
         }
 
-        public Task<Company> UpdateCompanyAsync(Company company)
+        public async Task<int> GetCompanyProjectCountAsync(int companyId)
         {
-            throw new NotImplementedException();
+            return await _projectRepository.CountAsync(p => p.CompanyId == companyId);
         }
 
-        public Task<bool> DeleteCompanyAsync(int id)
+        public async Task<int> GetCompanyEmployeeCountAsync(int companyId)
         {
-            throw new NotImplementedException();
+            return await _employeeRepository.CountAsync(e => e.CompanyId == companyId);
         }
     }
 }

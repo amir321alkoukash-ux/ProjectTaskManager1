@@ -1,21 +1,29 @@
 ﻿using ProjectTaskManager.Data.Repositories.Interfaces;
 using ProjectTaskManager.Entities;
 using ProjectTaskManager.Services.Interfaces;
+using Microsoft.Extensions.Logging;
+
 namespace ProjectTaskManager.Services.Implementations
 {
     public class EmployeeService : IEmployeeService
     {
         private readonly IRepository<Employee> _employeeRepository;
         private readonly IRepository<Company> _companyRepository;
+        private readonly IRepository<TaskRecord> _taskRepository;
+        private readonly IRepository<Project> _projectRepository; // Added
         private readonly ILogger<EmployeeService> _logger;
 
         public EmployeeService(
             IRepository<Employee> employeeRepository,
             IRepository<Company> companyRepository,
+            IRepository<TaskRecord> taskRepository,
+            IRepository<Project> projectRepository, // Added
             ILogger<EmployeeService> logger)
         {
             _employeeRepository = employeeRepository;
             _companyRepository = companyRepository;
+            _taskRepository = taskRepository;
+            _projectRepository = projectRepository; // Added
             _logger = logger;
         }
 
@@ -51,20 +59,10 @@ namespace ProjectTaskManager.Services.Implementations
         {
             try
             {
-                // Check if company exists
-                var company = await _companyRepository.GetByIdAsync(employee.CompanyId);
-                if (company == null)
-                    throw new InvalidOperationException($"Company with ID {employee.CompanyId} not found.");
-
-                // Check if email already exists
-                var existingEmployee = await _employeeRepository
-                    .FirstOrDefaultAsync(e => e.Email == employee.Email);
-
-                if (existingEmployee != null)
-                    throw new InvalidOperationException($"Employee with email '{employee.Email}' already exists.");
-
-                _logger.LogInformation("Creating new employee: {FirstName} {LastName}", employee.FirstName, employee.LastName);
+                _logger.LogInformation("Creating new employee: {FirstName} {LastName}",
+                    employee.FirstName, employee.LastName);
                 await _employeeRepository.AddAsync(employee);
+                await _employeeRepository.SaveChangesAsync(); // Added - save changes after add
                 return employee;
             }
             catch (Exception ex)
@@ -74,34 +72,18 @@ namespace ProjectTaskManager.Services.Implementations
             }
         }
 
-        public async Task<Employee> UpdateEmployeeAsync(Employee employee)
+        public async Task<Employee> UpdateEmployeeAsync(Employee employee, string firstName, string lastName, string username)
         {
             try
             {
-                var existingEmployee = await _employeeRepository.GetByIdAsync(employee.Id);
-                if (existingEmployee == null)
-                    throw new KeyNotFoundException($"Employee with ID {employee.Id} not found.");
-
-                // Check if company exists (if changed)
-                if (employee.CompanyId != existingEmployee.CompanyId)
-                {
-                    var company = await _companyRepository.GetByIdAsync(employee.CompanyId);
-                    if (company == null)
-                        throw new InvalidOperationException($"Company with ID {employee.CompanyId} not found.");
-                }
-
-                // Check if email changed and already exists
-                if (employee.Email != existingEmployee.Email)
-                {
-                    var emailExists = await _employeeRepository
-                        .FirstOrDefaultAsync(e => employee.Email == employee.Email && e.Id != employee.Id);
-
-                    if (emailExists != null)
-                        throw new InvalidOperationException($"Employee with email '{employee.Email}' already exists.");
-                }
-
                 _logger.LogInformation("Updating employee with ID: {Id}", employee.Id);
+                employee.FirstName = firstName;
+                employee.LastName = lastName;
+                employee.UpdatedBy = username;
+                employee.UpdatedAt = DateTime.UtcNow;
+
                 _employeeRepository.Update(employee);
+                await _employeeRepository.SaveChangesAsync(); // Changed to async
                 return employee;
             }
             catch (Exception ex)
@@ -111,21 +93,22 @@ namespace ProjectTaskManager.Services.Implementations
             }
         }
 
-        public async Task<bool> DeleteEmployeeAsync(int id)
+        public async Task<bool> DeleteEmployeeAsync(Employee employee, string username)
         {
             try
             {
-                var employee = await _employeeRepository.GetByIdAsync(id);
-                if (employee == null)
-                    return false;
-
-                _logger.LogInformation("Deleting employee with ID: {Id}", id);
-                _employeeRepository.Remove(employee);
+                _logger.LogInformation("Deleting employee with ID: {Id}", employee.Id);
+                employee.UpdatedBy = username;
+                employee.InactiveDate = DateTime.UtcNow;
+                employee.UpdatedAt = DateTime.UtcNow;
+               
+                _employeeRepository.Update(employee);
+                await _employeeRepository.SaveChangesAsync(); // Changed to async
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting employee with ID: {Id}", id);
+                _logger.LogError(ex, "Error deleting employee with ID: {Id}", employee.Id);
                 throw;
             }
         }
@@ -154,20 +137,35 @@ namespace ProjectTaskManager.Services.Implementations
             }
         }
 
-        public async Task<IEnumerable<Project>> GetEmployeeProjectsAsync(int employeeId)
+       
+
+        public async Task<IEnumerable<TaskRecord>> GetEmployeeTasksAsync(int employeeId)
         {
             try
             {
-                // This needs to be implemented with proper navigation
-                // For now, returning empty list - you'll need to implement this based on your navigation properties
-                _logger.LogInformation("Getting projects for employee ID: {EmployeeId}", employeeId);
-                return new List<Project>();
+                _logger.LogInformation("Getting tasks for employee ID: {EmployeeId}", employeeId);
+                return await _taskRepository.FindAsync(t => t.EmployeeId == employeeId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting projects for employee ID: {EmployeeId}", employeeId);
+                _logger.LogError(ex, "Error getting tasks for employee ID: {EmployeeId}", employeeId);
                 throw;
             }
+        }
+
+        public async Task SaveChangesAsync() // Changed to async
+        {
+            await _employeeRepository.SaveChangesAsync();
+        }
+
+        public void SaveChanges()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<IEnumerable<Project>> GetEmployeeProjectsAsync(int employeeId)
+        {
+            throw new NotImplementedException();
         }
     }
 }

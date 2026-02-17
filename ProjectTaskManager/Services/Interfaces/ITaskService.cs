@@ -4,15 +4,17 @@ namespace ProjectTaskManager.Services.Interfaces
 {
     public interface ITaskService
     {
-        Task<IEnumerable<Task>> GetAllTasksAsync();
-        Task<Task?> GetTaskByIdAsync(int id);
-        Task<Task> CreateTaskAsync(Task task);
-        Task<Task> UpdateTaskAsync(Task task);
-        Task<bool> DeleteTaskAsync(int id);
+        Task<IEnumerable<TaskRecord>> GetAllTasksAsync();
+        Task<TaskRecord?> GetTaskByIdAsync(int id);
+        Task<TaskRecord> CreateTaskAsync(TaskRecord task);
+        Task<TaskRecord> UpdateTaskAsync(TaskRecord task, string name, string description, string username);
+        Task<bool> DeleteTaskAsync(TaskRecord task, string username);
         Task<bool> TaskExistsAsync(int id);
-        Task<IEnumerable<Task>> GetTasksByProjectIdAsync(int projectId);
-        Task<IEnumerable<Task>> GetTasksByEmployeeIdAsync(int employeeId);
+        Task<bool> TaskNameExistsAsync(string name, int projectId);
+        Task<IEnumerable<TaskRecord>> GetTasksByProjectIdAsync(int projectId);
+        Task<IEnumerable<TaskRecord>> GetTasksByEmployeeIdAsync(int employeeId);
         Task<bool> AssignTaskToEmployeeAsync(int taskId, int employeeId);
-        Task<bool> CompleteTaskAsync(int taskId);
+        Task<bool> MarkTaskAsCompletedAsync(int taskId, string username);
+        void SaveChanges();
     }
-}   
+}

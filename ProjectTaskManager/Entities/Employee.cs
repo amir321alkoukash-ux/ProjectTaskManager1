@@ -5,9 +5,6 @@ namespace ProjectTaskManager.Entities
 {
     public class Employee : BaseEntity
     {
-        [Key]
-        public int Id { get; set; }
-
         [Required]
         [MaxLength(100)]
         public string FirstName { get; set; } = string.Empty;
@@ -23,18 +20,21 @@ namespace ProjectTaskManager.Entities
 
         public DateTime DateOfBirth { get; set; }
 
+        // Identity User relationship
+        public int? UserId { get; set; }
+        public virtual User? User { get; set; }
+
         [MaxLength(20)]
         public string? Mobile { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
-        public DateTime? UpdatedAt { get; set; }
-
+        // Foreign Key
         [ForeignKey("Company")]
         public int CompanyId { get; set; }
+        public ICollection<ProjectEmployee> ProjectEmployees { get; set; }
 
         // Navigation Properties
         public virtual Company Company { get; set; } = null!;
         public virtual ICollection<TaskRecord> Tasks { get; set; } = new List<TaskRecord>();
-        public virtual ICollection<ProjectEmployee> ProjectEmployees { get; set; } = new List<ProjectEmployee>();
+      
     }
 }

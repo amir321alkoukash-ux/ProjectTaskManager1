@@ -39,8 +39,12 @@ namespace ProjectTaskManager.DTOs
         [MaxLength(100)]
         public string? Email { get; set; }
 
+        public DateTime? DateOfBirth { get; set; }
+
         [MaxLength(20)]
         public string? Mobile { get; set; }
+
+        public int? CompanyId { get; set; }
     }
 
     public class EmployeeDto
@@ -52,18 +56,9 @@ namespace ProjectTaskManager.DTOs
         public string Email { get; set; } = string.Empty;
         public DateTime DateOfBirth { get; set; }
         public string? Mobile { get; set; }
-        public string CompanyName { get; set; } = string.Empty;
         public int CompanyId { get; set; }
-        public int Age => DateTime.UtcNow.Year - DateOfBirth.Year;
-        public int ProjectCount { get; set; }
-        public int TaskCount { get; set; }
+        public string CompanyName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
-    }
-
-    public class EmployeeDetailDto : EmployeeDto
-    {
-        public CompanyDto Company { get; set; } = null!;
-        public List<ProjectDto> Projects { get; set; } = new();
-        public List<TaskDto> Tasks { get; set; } = new();
+        public bool IsActive { get; set; }
     }
 }

@@ -1,11 +1,13 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using ProjectTaskManager.Data;
+using System.ComponentModel.DataAnnotations;
 
 namespace ProjectTaskManager.Entities
 {
     public class Company : BaseEntity
     {
-       
-        
+
+        public int Id { get; set; }
+
         [Required]
         [MaxLength(200)]
         public string Name { get; set; } = string.Empty;
@@ -15,12 +17,20 @@ namespace ProjectTaskManager.Entities
         [MaxLength(100)]
         public string Email { get; set; } = string.Empty;
 
+
+        public ICollection<User> Users { get; set; }
+        public ICollection<Project> Projects { get; set; }
+
+
+
         [MaxLength(500)]
         public string? Location { get; set; }
+        public Company()
+        {
+            Users = new HashSet<User>();
+            Projects = new HashSet<Project>();
+        }
 
-     
-        // Navigation Properties
-        public virtual ICollection<Project> Projects { get; set; } = new List<Project>();
         public virtual ICollection<Employee> Employees { get; set; } = new List<Employee>();
     }
 }

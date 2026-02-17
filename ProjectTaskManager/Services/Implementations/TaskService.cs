@@ -6,13 +6,13 @@ namespace ProjectTaskManager.Services.Implementations
 {
     public class TaskService : ITaskService
     {
-        private readonly IRepository<Task> _taskRepository;
+        private readonly IRepository<TaskRecord> _taskRepository;
         private readonly IRepository<Project> _projectRepository;
         private readonly IRepository<Employee> _employeeRepository;
         private readonly ILogger<TaskService> _logger;
 
         public TaskService(
-            IRepository<Task> taskRepository,
+            IRepository<TaskRecord> taskRepository,
             IRepository<Project> projectRepository,
             IRepository<Employee> employeeRepository,
             ILogger<TaskService> logger)
@@ -23,7 +23,7 @@ namespace ProjectTaskManager.Services.Implementations
             _logger = logger;
         }
 
-        public async Task<IEnumerable<Task>> GetAllTasksAsync()
+        public async Task<IEnumerable<TaskRecord>> GetAllTasksAsync()
         {
             try
             {
@@ -37,7 +37,7 @@ namespace ProjectTaskManager.Services.Implementations
             }
         }
 
-        public async Task<Task?> GetTaskByIdAsync(int id)
+        public async Task<TaskRecord?> GetTaskByIdAsync(int id)
         {
             try
             {
@@ -51,23 +51,10 @@ namespace ProjectTaskManager.Services.Implementations
             }
         }
 
-        public async Task<Task> CreateTaskAsync(Task task)
+        public async Task<TaskRecord> CreateTaskAsync(TaskRecord task)
         {
             try
             {
-                // Check if project exists
-                var project = await _projectRepository.GetByIdAsync(task.ProjectId);
-                if (project == null)
-                    throw new InvalidOperationException($"Project with ID {task.ProjectId} not found.");
-
-                // Check if assigned employee exists (if assigned)
-                if (task.EmployeeId.HasValue)
-                {
-                    var employee = await _employeeRepository.GetByIdAsync(task.EmployeeId.Value);
-                    if (employee == null)
-                        throw new InvalidOperationException($"Employee with ID {task.EmployeeId} not found.");
-                }
-
                 _logger.LogInformation("Creating new task: {Name}", task.Name);
                 await _taskRepository.AddAsync(task);
                 return task;
@@ -79,31 +66,16 @@ namespace ProjectTaskManager.Services.Implementations
             }
         }
 
-        public async Task<Task> UpdateTaskAsync(Task task)
+        public async Task<TaskRecord> UpdateTaskAsync(TaskRecord task, string name, string description, string username)
         {
             try
             {
-                var existingTask = await _taskRepository.GetByIdAsync(task.Id);
-                if (existingTask == null)
-                    throw new KeyNotFoundException($"Task with ID {task.Id} not found.");
-
-                // Check if project exists (if changed)
-                if (task.ProjectId != existingTask.ProjectId)
-                {
-                    var project = await _projectRepository.GetByIdAsync(task.ProjectId);
-                    if (project == null)
-                        throw new InvalidOperationException($"Project with ID {task.ProjectId} not found.");
-                }
-
-                // Check if assigned employee exists (if changed)
-                if (task.EmployeeId != existingTask.EmployeeId && task.EmployeeId.HasValue)
-                {
-                    var employee = await _employeeRepository.GetByIdAsync(task.EmployeeId.Value);
-                    if (employee == null)
-                        throw new InvalidOperationException($"Employee with ID {task.EmployeeId} not found.");
-                }
-
                 _logger.LogInformation("Updating task with ID: {Id}", task.Id);
+                task.Name = name;
+                task.Description = description;
+                task.UpdatedBy = username;
+                task.UpdatedAt = DateTime.UtcNow;
+
                 _taskRepository.Update(task);
                 return task;
             }
@@ -114,21 +86,21 @@ namespace ProjectTaskManager.Services.Implementations
             }
         }
 
-        public async Task<bool> DeleteTaskAsync(int id)
+        public async Task<bool> DeleteTaskAsync(TaskRecord task, string username)
         {
             try
             {
-                var task = await _taskRepository.GetByIdAsync(id);
-                if (task == null)
-                    return false;
+                _logger.LogInformation("Deleting task with ID: {Id}", task.Id);
+                task.UpdatedBy = username;
+                task.InactiveDate = DateTime.UtcNow;
+                task.UpdatedAt = DateTime.UtcNow;
+                _taskRepository.Update(task);
 
-                _logger.LogInformation("Deleting task with ID: {Id}", id);
-                _taskRepository.Remove(task);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting task with ID: {Id}", id);
+                _logger.LogError(ex, "Error deleting task with ID: {Id}", task.Id);
                 throw;
             }
         }
@@ -138,7 +110,12 @@ namespace ProjectTaskManager.Services.Implementations
             return await _taskRepository.AnyAsync(t => t.Id == id);
         }
 
-        public async Task<IEnumerable<Task>> GetTasksByProjectIdAsync(int projectId)
+        public async Task<bool> TaskNameExistsAsync(string name, int projectId)
+        {
+            return await _taskRepository.AnyAsync(t => t.Name == name && t.ProjectId == projectId);
+        }
+
+        public async Task<IEnumerable<TaskRecord>> GetTasksByProjectIdAsync(int projectId)
         {
             try
             {
@@ -152,7 +129,7 @@ namespace ProjectTaskManager.Services.Implementations
             }
         }
 
-        public async Task<IEnumerable<Task>> GetTasksByEmployeeIdAsync(int employeeId)
+        public async Task<IEnumerable<TaskRecord>> GetTasksByEmployeeIdAsync(int employeeId)
         {
             try
             {
@@ -170,46 +147,53 @@ namespace ProjectTaskManager.Services.Implementations
         {
             try
             {
-                var task = await _taskRepository.GetByIdAsync(taskId);
+                var task = await GetTaskByIdAsync(taskId);
                 if (task == null)
-                    throw new KeyNotFoundException($"Task with ID {taskId} not found.");
+                    return false;
 
                 var employee = await _employeeRepository.GetByIdAsync(employeeId);
                 if (employee == null)
-                    throw new InvalidOperationException($"Employee with ID {employeeId} not found.");
+                    return false;
 
                 task.EmployeeId = employeeId;
+                task.UpdatedAt = DateTime.UtcNow;
                 _taskRepository.Update(task);
 
-                _logger.LogInformation("Assigned task {TaskId} to employee {EmployeeId}", taskId, employeeId);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error assigning task {TaskId} to employee {EmployeeId}", taskId, employeeId);
+                _logger.LogError(ex, "Error assigning task {TaskId} to employee {EmployeeId}",
+                    taskId, employeeId);
                 throw;
             }
         }
 
-        public async Task<bool> CompleteTaskAsync(int taskId)
+        public async Task<bool> MarkTaskAsCompletedAsync(int taskId, string username)
         {
             try
             {
-                var task = await _taskRepository.GetByIdAsync(taskId);
+                var task = await GetTaskByIdAsync(taskId);
                 if (task == null)
                     return false;
 
                 task.CompletionDate = DateTime.UtcNow;
+                task.UpdatedBy = username;
+                task.UpdatedAt = DateTime.UtcNow;
                 _taskRepository.Update(task);
 
-                _logger.LogInformation("Completed task with ID: {TaskId}", taskId);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error completing task with ID: {TaskId}", taskId);
+                _logger.LogError(ex, "Error marking task {TaskId} as completed", taskId);
                 throw;
             }
+        }
+
+        public void SaveChanges()
+        {
+            _taskRepository.SaveChanges();
         }
     }
 }

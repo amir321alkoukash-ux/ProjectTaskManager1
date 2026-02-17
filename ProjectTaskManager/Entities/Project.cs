@@ -5,8 +5,10 @@ namespace ProjectTaskManager.Entities
 {
     public class Project : BaseEntity
     {
-        [Key]
+
+
         public int Id { get; set; }
+
 
         [Required]
         [MaxLength(200)]
@@ -15,16 +17,33 @@ namespace ProjectTaskManager.Entities
         [MaxLength(1000)]
         public string? Description { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime? DueDate { get; set; }
-        public DateTime? UpdatedAt { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
 
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? Budget { get; set; }
+        
+
+
+        // Foreign Key
         [ForeignKey("Company")]
         public int CompanyId { get; set; }
 
         // Navigation Properties
-        public virtual Company Company { get; set; } = null!;
-        public virtual ICollection<TaskRecord> Tasks { get; set; } = new List<TaskRecord>();
-        public virtual ICollection<ProjectEmployee> ProjectEmployees { get; set; } = new List<ProjectEmployee>();
-    }
+        public  Company Company { get; set; } = null!;
+        public  ICollection<TaskRecord> Tasks { get; set; } 
+        public  ICollection<ProjectEmployee> ProjectEmployees { get; set; } 
+        public DateTime? DueDate { get; internal set;}
+                    public Project()
+        {
+            Tasks = new HashSet<TaskRecord>();
+            ProjectEmployees = new HashSet<ProjectEmployee>();
+        }
+
+
+
+
+
+    
+}
 }

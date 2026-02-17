@@ -17,8 +17,8 @@ namespace ProjectTaskManager.Entities
         public DateTime? DueDate { get; set; }
         public DateTime? CompletionDate { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime? UpdatedAt { get; set; }
+        public DateTime Createdat { get; set; } = DateTime.UtcNow;
+        public DateTime? Updatedat { get; set; }
 
         [ForeignKey("Project")]
         public int ProjectId { get; set; }

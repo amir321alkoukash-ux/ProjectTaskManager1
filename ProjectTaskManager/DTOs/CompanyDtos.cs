@@ -37,9 +37,9 @@ namespace ProjectTaskManager.DTOs
         public string Email { get; set; } = string.Empty;
         public string? Location { get; set; }
         public DateTime CreatedAt { get; set; }
+        public bool IsActive { get; set; }
         public int ProjectCount { get; set; }
         public int EmployeeCount { get; set; }
-        public bool IsActive { get; set; }
     }
 
     public class CompanyDetailDto : CompanyDto

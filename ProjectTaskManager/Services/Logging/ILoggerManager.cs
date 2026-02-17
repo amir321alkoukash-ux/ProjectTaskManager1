@@ -1,11 +1,12 @@
-﻿using System;
+﻿using ProjectTaskManager.Entities;
+using System;
 
 namespace ProjectTaskManager.Services.Logging
 {
     /// <summary>
     /// Interface for logger manager service
-    /// </summary>
-    public interface ILoggerManager
+    /// </summary>:
+    public interface ILoggerManager 
     {
         // Debug level logging
         void LogDebug(string message);

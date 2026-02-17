@@ -2,13 +2,10 @@
 
 namespace ProjectTaskManager.Services.Logging
 {
-    /// <summary>
-    /// Logger manager implementation using NLog
-    /// </summary>
+   
     public class LoggerManager : ILoggerManager
     {
-        private static readonly ILoggerManager.ILogger _logger = LogManager.GetCurrentClassLogger();
-
+       private static readonly NLog.ILogger _logger = LogManager.GetCurrentClassLogger();
         public void LogDebug(string message)
         {
             _logger.Debug(message);
