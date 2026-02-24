@@ -1,137 +1,105 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ProjectTaskManager.Entities;
+using ProjectTaskManager.Services.Interfaces;
+using System.Reflection.Emit;
 
-
-
-namespace ProjectTaskManager.Data 
+namespace ProjectTaskManager.Data.Context
 {
-    public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, int>
+    public class ApplicationDbContext : IdentityDbContext<User>
     {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options): base(options)
+        private readonly ICurrentUserService _currentUserService;
+
+        public ApplicationDbContext(
+            DbContextOptions<ApplicationDbContext> options,
+            ICurrentUserService currentUserService) : base(options)
         {
+            _currentUserService = currentUserService;
         }
 
-        // DbSets
         public DbSet<Company> Companies { get; set; }
-        public DbSet<Employee> Employees { get; set; }
         public DbSet<Project> Projects { get; set; }
         public DbSet<TaskRecord> Tasks { get; set; }
         public DbSet<ProjectEmployee> ProjectEmployees { get; set; }
-        public object Database { get; internal set; }
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        protected override void OnModelCreating(ModelBuilder builder)
         {
-            base.OnModelCreating(modelBuilder);
+            base.OnModelCreating(builder);
 
-            // ===== IDENTITY TABLE CONFIGURATION =====
-            modelBuilder.Entity<User>(entity =>
-            {
-                entity.ToTable("Users");
-                entity.HasIndex(u => u.Email).IsUnique();
-                entity.HasIndex(u => u.UserName).IsUnique();
-
-                entity.HasOne(u => u.Company)
-                    .WithMany(c => c.Users)
-                    .HasForeignKey(u => u.CompanyId)
-                    .OnDelete(DeleteBehavior.SetNull);
-            });
-
-            modelBuilder.Entity<IdentityRole<int>>(entity =>
-            {
-                entity.ToTable("Roles");
-            });
-
-            modelBuilder.Entity<IdentityUserRole<int>>(entity =>
-            {
-                entity.ToTable("UserRoles");
-                entity.HasKey(ur => new { ur.UserId, ur.RoleId });
-            });
-
-            modelBuilder.Entity<IdentityUserClaim<int>>(entity =>
-            {
-                entity.ToTable("UserClaims");
-            });
-
-            modelBuilder.Entity<IdentityUserLogin<int>>(entity =>
-            {
-                entity.ToTable("UserLogins");
-                entity.HasKey(ul => new { ul.LoginProvider, ul.ProviderKey });
-            });
-
-            modelBuilder.Entity<IdentityRoleClaim<int>>(entity =>
-            {
-                entity.ToTable("RoleClaims");
-            });
-
-            modelBuilder.Entity<IdentityUserToken<int>>(entity =>
-            {
-                entity.ToTable("UserTokens");
-                entity.HasKey(ut => new { ut.UserId, ut.LoginProvider, ut.Name });
-            });
-
-            // ===== COMPANY CONFIGURATION =====
-            modelBuilder.Entity<Company>()
+            // Unique company name
+            builder.Entity<Company>()
                 .HasIndex(c => c.Name)
                 .IsUnique();
 
-            modelBuilder.Entity<Company>()
-                .HasIndex(c => c.Email)
-                .IsUnique();
-
-            modelBuilder.Entity<Company>()
-                .HasMany(c => c.Users)
-                .WithOne(u => u.Company)
-                .HasForeignKey(u => u.CompanyId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            // ===== EMPLOYEE CONFIGURATION =====
-            modelBuilder.Entity<Employee>()
-                .HasIndex(e => e.Email)
-                .IsUnique();
-
-            modelBuilder.Entity<Employee>()
-                .HasOne(e => e.User)
-                .WithMany(u => u.Employees)
-                .HasForeignKey(e => e.UserId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            // ===== PROJECT CONFIGURATION =====
-            modelBuilder.Entity<Project>()
+            // Company-Project
+            builder.Entity<Project>()
                 .HasOne(p => p.Company)
                 .WithMany(c => c.Projects)
                 .HasForeignKey(p => p.CompanyId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
-            // ===== TASK CONFIGURATION =====
-            modelBuilder.Entity<TaskRecord>()
+            // Company-User
+            builder.Entity<User>()
+                .HasOne(u => u.Company)
+                .WithMany(c => c.Users)
+                .HasForeignKey(u => u.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Project-Task
+            builder.Entity<TaskRecord>()
                 .HasOne(t => t.Project)
                 .WithMany(p => p.Tasks)
                 .HasForeignKey(t => t.ProjectId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<TaskRecord>()
-                .HasOne(t => t.Employee)
-                .WithMany(e => e.Tasks)
-                .HasForeignKey(t => t.EmployeeId)
-                .OnDelete(DeleteBehavior.SetNull);
+            // User-Task
+            builder.Entity<TaskRecord>()
+                .HasOne(t => t.User)
+                .WithMany(u => u.Tasks)
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-            // ===== MANY-TO-MANY RELATIONSHIP =====
-            modelBuilder.Entity<ProjectEmployee>()
-                .HasKey(pe => new { pe.ProjectId, pe.EmployeeId });
+            // Many-to-many User-Project
+            builder.Entity<ProjectEmployee>()
+                .HasKey(pe => pe.Id);
 
-            modelBuilder.Entity<ProjectEmployee>()
+            builder.Entity<ProjectEmployee>()
                 .HasOne(pe => pe.Project)
                 .WithMany(p => p.ProjectEmployees)
-                .HasForeignKey(pe => pe.ProjectId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .HasForeignKey(pe => pe.ProjectId);
 
-            modelBuilder.Entity<ProjectEmployee>()
-                .HasOne(pe => pe.Employee)
-                .WithMany(e => e.ProjectEmployees)
-                .HasForeignKey(pe => pe.EmployeeId)
-                .OnDelete(DeleteBehavior.Cascade);
+            builder.Entity<ProjectEmployee>()
+                .HasOne(pe => pe.User)
+                .WithMany(u => u.ProjectEmployees)
+                .HasForeignKey(pe => pe.UserId);
+
+            // Global query filter for soft delete
+            builder.Entity<Company>().HasQueryFilter(e => e.InactiveDate == null);
+            builder.Entity<Project>().HasQueryFilter(e => e.InactiveDate == null);
+            builder.Entity<TaskRecord>().HasQueryFilter(e => e.InactiveDate == null);
+            builder.Entity<ProjectEmployee>().HasQueryFilter(e => e.InactiveDate == null);
+        }
+
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            var userId = _currentUserService.GetCurrentUserId();
+
+            foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+            {
+                switch (entry.State)
+                {
+                    case EntityState.Added:
+                        entry.Entity.CreatedAt = DateTime.UtcNow;
+                        entry.Entity.CreatedBy = userId;
+                        break;
+                    case EntityState.Modified:
+                        entry.Entity.UpdatedAt = DateTime.UtcNow;
+                        entry.Entity.UpdatedBy = userId;
+                        break;
+                }
+            }
+
+            return await base.SaveChangesAsync(cancellationToken);
         }
     }
 }

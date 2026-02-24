@@ -14,5 +14,8 @@ namespace ProjectTaskManager.Models.Account
         public DateTime CreatedAt { get; set; }
         public bool IsActive { get; set; }
         public IList<string> Roles { get; set; } = new List<string>();
+        public string Phone { get; internal set; }
+        public string Position { get; internal set; }
+        public DateTime HireDate { get; internal set; }
     }
 }

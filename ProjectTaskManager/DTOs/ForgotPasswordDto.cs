@@ -2,10 +2,9 @@
 
 namespace ProjectTaskManager.DTOs
 {
-    public class ForgotPasswordDto
+    public class ForgottenPasswordDto
     {
-        [Required]
-        [EmailAddress]
+        [Required, EmailAddress]
         public string Email { get; set; }
     }
 }

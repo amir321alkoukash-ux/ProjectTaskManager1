@@ -1,36 +1,20 @@
-﻿using ProjectTaskManager.Data;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace ProjectTaskManager.Entities
 {
     public class Company : BaseEntity
     {
+        [Required, MaxLength(100)]
+        public string Name { get; set; }
 
-        public int Id { get; set; }
+        [Required, EmailAddress, MaxLength(100)]
+        public string Email { get; set; }
 
-        [Required]
-        [MaxLength(200)]
-        public string Name { get; set; } = string.Empty;
+        [Required, MaxLength(200)]
+        public string Location { get; set; }
 
-        [Required]
-        [EmailAddress]
-        [MaxLength(100)]
-        public string Email { get; set; } = string.Empty;
-
-
-        public ICollection<User> Users { get; set; }
+        // Navigation properties
         public ICollection<Project> Projects { get; set; }
-
-
-
-        [MaxLength(500)]
-        public string? Location { get; set; }
-        public Company()
-        {
-            Users = new HashSet<User>();
-            Projects = new HashSet<Project>();
-        }
-
-        public virtual ICollection<Employee> Employees { get; set; } = new List<Employee>();
+        public ICollection<User> Users { get; set; }
     }
 }

@@ -1,206 +1,86 @@
-﻿using ProjectTaskManager.Data.Repositories.Interfaces;
+﻿using AutoMapper;
+using ProjectTaskManager.DTOs;
 using ProjectTaskManager.Entities;
+using ProjectTaskManager.Data.Repositories.Interfaces;
 using ProjectTaskManager.Services.Interfaces;
 
 namespace ProjectTaskManager.Services.Implementations
 {
     public class ProjectService : IProjectService
     {
-        private readonly IRepository<Project> _projectRepository;
-        private readonly IRepository<Company> _companyRepository;
+        private readonly IProjectRepository _projectRepository;
         private readonly IRepository<ProjectEmployee> _projectEmployeeRepository;
-        private readonly IRepository<TaskRecord> _taskRepository;
-        private readonly ILogger<ProjectService> _logger;
+        private readonly IMapper _mapper;
 
         public ProjectService(
-            IRepository<Project> projectRepository,
-            IRepository<Company> companyRepository,
+            IProjectRepository projectRepository,
             IRepository<ProjectEmployee> projectEmployeeRepository,
-            IRepository<TaskRecord> taskRepository,
-            ILogger<ProjectService> logger)
+            IMapper mapper)
         {
             _projectRepository = projectRepository;
-            _companyRepository = companyRepository;
             _projectEmployeeRepository = projectEmployeeRepository;
-            _taskRepository = taskRepository;
-            _logger = logger;
+            _mapper = mapper;
         }
 
-        public async Task<IEnumerable<Project>> GetAllProjectsAsync()
+        public async Task<ProjectDto> GetProjectByIdAsync(int id)
         {
-            try
-            {
-                _logger.LogInformation("Getting all projects");
-                return await _projectRepository.GetAllAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting all projects");
-                throw;
-            }
+            var project = await _projectRepository.GetProjectWithDetailsAsync(id);
+            if (project == null) throw new KeyNotFoundException("Project not found");
+            return _mapper.Map<ProjectDto>(project);
         }
 
-        public async Task<Project?> GetProjectByIdAsync(int id)
+        public async Task<IEnumerable<ProjectDto>> GetAllProjectsAsync()
         {
-            try
-            {
-                _logger.LogInformation("Getting project with ID: {Id}", id);
-                return await _projectRepository.GetByIdAsync(id);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting project with ID: {Id}", id);
-                throw;
-            }
+            var projects = await _projectRepository.GetAllAsync();
+            return _mapper.Map<IEnumerable<ProjectDto>>(projects);
         }
 
-        public async Task<Project> CreateProjectAsync(Project project)
+        public async Task<ProjectDto> CreateProjectAsync(ProjectDto projectDto)
         {
-            try
+            var project = _mapper.Map<Project>(projectDto);
+            await _projectRepository.AddAsync(project);
+            await _projectRepository.SaveChangesAsync();
+            return _mapper.Map<ProjectDto>(project);
+        }
+
+        public async Task UpdateProjectAsync(int id, ProjectDto projectDto)
+        {
+            var project = await _projectRepository.GetByIdAsync(id);
+            if (project == null) throw new KeyNotFoundException("Project not found");
+            _mapper.Map(projectDto, project);
+            _projectRepository.Update(project);
+            await _projectRepository.SaveChangesAsync();
+        }
+
+        public async Task DeleteProjectAsync(int id)
+        {
+            var project = await _projectRepository.GetByIdAsync(id);
+            if (project != null)
             {
-                _logger.LogInformation("Creating new project: {Name}", project.Name);
-                await _projectRepository.AddAsync(project);
-                return project;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating project");
-                throw;
+                _projectRepository.Remove(project);
+                await _projectRepository.SaveChangesAsync();
             }
         }
 
-        public async Task<Project> UpdateProjectAsync(Project project, string name, string description, string username)
+        public async Task AssignUserToProjectAsync(int projectId, string userId)
         {
-            try
+            var exists = await _projectEmployeeRepository.AnyAsync(pe => pe.ProjectId == projectId && pe.UserId == userId);
+            if (!exists)
             {
-                _logger.LogInformation("Updating project with ID: {Id}", project.Id);
-                project.Name = name;
-                project.Description = description;
-                project.UpdatedBy = username;
-                project.UpdatedAt = DateTime.UtcNow;
-
-                _projectRepository.Update(project);
-                return project;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating project with ID: {Id}", project.Id);
-                throw;
+                var projectEmployee = new ProjectEmployee { ProjectId = projectId, UserId = userId };
+                await _projectEmployeeRepository.AddAsync(projectEmployee);
+                await _projectEmployeeRepository.SaveChangesAsync();
             }
         }
 
-        public async Task<bool> DeleteProjectAsync(Project project, string username)
+        public async Task RemoveUserFromProjectAsync(int projectId, string userId)
         {
-            try
+            var pe = await _projectEmployeeRepository.FirstOrDefaultAsync(pe => pe.ProjectId == projectId && pe.UserId == userId);
+            if (pe != null)
             {
-                _logger.LogInformation("Deleting project with ID: {Id}", project.Id);
-                project.UpdatedBy = username;
-                project.InactiveDate = DateTime.UtcNow;
-                project.UpdatedAt = DateTime.UtcNow;
-                _projectRepository.Update(project);
-
-                return true;
+                _projectEmployeeRepository.Remove(pe);
+                await _projectEmployeeRepository.SaveChangesAsync();
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting project with ID: {Id}", project.Id);
-                throw;
-            }
-        }
-
-        public async Task<bool> ProjectExistsAsync(int id)
-        {
-            return await _projectRepository.AnyAsync(p => p.Id == id);
-        }
-
-        public async Task<bool> ProjectNameExistsAsync(string name, int companyId)
-        {
-            return await _projectRepository.AnyAsync(p => p.Name == name && p.CompanyId == companyId);
-        }
-
-        public async Task<IEnumerable<Project>> GetProjectsByCompanyIdAsync(int companyId)
-        {
-            try
-            {
-                _logger.LogInformation("Getting projects for company ID: {CompanyId}", companyId);
-                return await _projectRepository.FindAsync(p => p.CompanyId == companyId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting projects for company ID: {CompanyId}", companyId);
-                throw;
-            }
-        }
-
-        public async Task<IEnumerable<Employee>> GetProjectEmployeesAsync(int projectId)
-        {
-            // Implementation needed - get employees through ProjectEmployee relationship
-            return new List<Employee>();
-        }
-
-        public async Task<bool> AssignEmployeeToProjectAsync(int projectId, int employeeId)
-        {
-            try
-            {
-                var assignment = new ProjectEmployee
-                {
-                    ProjectId = projectId,
-                    EmployeeId = employeeId,
-                    AssignedDate = DateTime.UtcNow
-                };
-
-                // Check if already assigned
-                var existing = await _projectEmployeeRepository
-                    .FirstOrDefaultAsync(pe => pe.ProjectId == projectId && pe.EmployeeId == employeeId);
-
-                if (existing != null)
-                    return false;
-
-                await _projectEmployeeRepository.AddAsync(assignment);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error assigning employee {EmployeeId} to project {ProjectId}",
-                    employeeId, projectId);
-                throw;
-            }
-        }
-
-        public async Task<bool> RemoveEmployeeFromProjectAsync(int projectId, int employeeId)
-        {
-            try
-            {
-                var assignment = await _projectEmployeeRepository
-                    .FirstOrDefaultAsync(pe => pe.ProjectId == projectId && pe.EmployeeId == employeeId);
-
-                if (assignment == null)
-                    return false;
-
-                _projectEmployeeRepository.Remove(assignment);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error removing employee {EmployeeId} from project {ProjectId}",
-                    employeeId, projectId);
-                throw;
-            }
-        }
-
-        public async Task<int> GetProjectTaskCountAsync(int projectId)
-        {
-            return await _taskRepository.CountAsync(t => t.ProjectId == projectId);
-        }
-
-        public async Task<int> GetProjectEmployeeCountAsync(int projectId)
-        {
-            return await _projectEmployeeRepository.CountAsync(pe => pe.ProjectId == projectId);
-        }
-
-        public void SaveChanges()
-        {
-            _projectRepository.SaveChanges();
         }
     }
 }

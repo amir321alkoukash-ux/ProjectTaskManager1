@@ -1,111 +1,138 @@
-﻿using Microsoft.EntityFrameworkCore;
-using ProjectTaskManager.Data.Repositories.Interfaces;
-using ProjectTaskManager.Data.Repositories.Implementations;
-using ProjectTaskManager.Services.Interfaces;
-using ProjectTaskManager.Services.Implementations;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+//using Microsoft.OpenApi.Models;
+using NLog.Web;
+using ProjectTaskManager.Data.Context;
+using ProjectTaskManager.Data.Repositories.Implementations;
+using ProjectTaskManager.Data.Repositories.Interfaces;
 using ProjectTaskManager.Entities;
+using ProjectTaskManager.Mappings;
+using ProjectTaskManager.Middlewares;
+using ProjectTaskManager.Seed;
+using ProjectTaskManager.Services.Implementations;
+using ProjectTaskManager.Services.Interfaces;
 using ProjectTaskManager.Services.Logging;
-using ProjectTaskManager.Data;
+using System.Text;
 
-namespace ProjectTaskManager
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
 {
-    public class Program  
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "ProjectTaskManager API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        public static void Main(string[] args)
+        In = ParameterLocation.Header,
+        Description = "Please enter JWT with Bearer into field",
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
         {
-            var builder = WebApplication.CreateBuilder(args);
-
-            // Add services
-            builder.Services.AddControllers();
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
-
-            // DbContext
-            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-            builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(connectionString));
-
-            // Identity
-            builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
+            new OpenApiSecurityScheme
             {
-                options.Password.RequireDigit = true;
-                options.Password.RequiredLength = 6;
-                options.Password.RequireNonAlphanumeric = false;
-                options.Password.RequireUppercase = true;
-                options.Password.RequireLowercase = true;
-                options.User.RequireUniqueEmail = true;
-            })
-            .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddDefaultTokenProviders()
-            .AddRoles<IdentityRole<int>>();
-
-            builder.Services.ConfigureApplicationCookie(options =>
-            {
-                options.Cookie.HttpOnly = true;
-                options.ExpireTimeSpan = TimeSpan.FromDays(7);
-                options.LoginPath = "/api/user/login";
-                options.LogoutPath = "/api/user/logout";
-                options.SlidingExpiration = true;
-            });
-
-            // Repositories
-            builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-
-            // Services
-            builder.Services.AddScoped<IUserService, UserService>();
-            builder.Services.AddScoped<IEmployeeService, EmployeeService>();
-            builder.Services.AddScoped<ICompanyService, CompanyService>();
-            builder.Services.AddScoped<IProjectService, ProjectService>();
-            builder.Services.AddScoped<ITaskService, TaskService>();
-            builder.Services.AddScoped<ILoggerManager, LoggerManager>();
-
-
-            // CORS
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("AllowAll",
-                    policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
-            });
-
-            var app = builder.Build();
-
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
-
-
-            app.UseCors("AllowAll");
-            app.UseHttpsRedirection();
-            app.UseAuthentication();
-            app.UseAuthorization();
-            app.MapControllers();
-
-            // Fixed test endpoints
-            app.MapGet("/test", () => "API is running!");
-
-            // Add these test endpoints
-            app.MapGet("/test/companies", async (ApplicationDbContext db) =>
-                await db.Companies.ToListAsync());
-
-            app.MapGet("/test/employees", async (ApplicationDbContext db) =>
-                await db.Employees.ToListAsync());
-
-            app.MapGet("/test/projects", async (ApplicationDbContext db) =>
-                await db.Projects.ToListAsync());
-
-
-
-
-            app.MapGet("/test-db", async (ApplicationDbContext db) =>
-            {
- 
-            }
-            );
-
-            app.Run();
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            new string[] {}
         }
-    }
+    });
+});
+
+// Database
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Identity
+builder.Services.AddIdentity<User, IdentityRole>()
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
+// JWT
+var jwtSettings = builder.Configuration.GetSection("Jwt");
+var key = Encoding.ASCII.GetBytes(jwtSettings["Secret"]);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidateAudience = true,
+        ValidAudience = jwtSettings["Audience"],
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
+builder.Services.AddAuthorization();
+
+// AutoMapper
+builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+// HTTP Context Accessor
+builder.Services.AddHttpContextAccessor();
+
+// Services
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ICompanyService, CompanyService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<ITaskService, TaskService>();
+
+// Repositories
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+builder.Services.AddScoped<ICompanyRepository, CompanyRepository>();
+builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+
+// Logging
+builder.Services.AddSingleton<ILoggerManager, LoggerManager>();
+builder.Logging.ClearProviders();
+builder.Host.UseNLog(); // Uses NLog.Web.AspNetCore
+
+var app = builder.Build();
+
+// Seed database
+using (var scope = app.Services.CreateScope())
+{
+    await scope.ServiceProvider.SeedDatabaseAsync();
+}
+
+// Pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();
+
+internal class OpenApiReference
+{
+    public ReferenceType Type { get; set; }
+    public string Id { get; set; }
 }

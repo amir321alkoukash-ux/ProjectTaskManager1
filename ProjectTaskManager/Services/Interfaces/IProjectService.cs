@@ -1,22 +1,15 @@
-﻿using ProjectTaskManager.Entities;
+﻿using ProjectTaskManager.DTOs;
 
 namespace ProjectTaskManager.Services.Interfaces
 {
-    public interface IProjectService 
+    public interface IProjectService
     {
-        Task<IEnumerable<Project>> GetAllProjectsAsync();
-        Task<Project?> GetProjectByIdAsync(int id);
-        Task<Project> CreateProjectAsync(Project project);
-        Task<Project> UpdateProjectAsync(Project project, string name, string description, string username);
-        Task<bool> DeleteProjectAsync(Project project, string username);
-        Task<bool> ProjectExistsAsync(int id);
-        Task<bool> ProjectNameExistsAsync(string name, int companyId);
-        Task<IEnumerable<Project>> GetProjectsByCompanyIdAsync(int companyId);
-        Task<IEnumerable<Employee>> GetProjectEmployeesAsync(int projectId);
-        Task<bool> AssignEmployeeToProjectAsync(int projectId, int employeeId);
-        Task<bool> RemoveEmployeeFromProjectAsync(int projectId, int employeeId);
-        Task<int> GetProjectTaskCountAsync(int projectId);
-        Task<int> GetProjectEmployeeCountAsync(int projectId);
-        void SaveChanges();
+        Task<ProjectDto> GetProjectByIdAsync(int id);
+        Task<IEnumerable<ProjectDto>> GetAllProjectsAsync();
+        Task<ProjectDto> CreateProjectAsync(ProjectDto projectDto);
+        Task UpdateProjectAsync(int id, ProjectDto projectDto);
+        Task DeleteProjectAsync(int id);
+        Task AssignUserToProjectAsync(int projectId, string userId);
+        Task RemoveUserFromProjectAsync(int projectId, string userId);
     }
 }

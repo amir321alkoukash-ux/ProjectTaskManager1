@@ -30,5 +30,8 @@ namespace ProjectTaskManager.Models.Account
 
         [Display(Name = "Company ID")]
         public int? CompanyId { get; set; }
+        public string Phone { get; internal set; }
+        public string Position { get; internal set; }
+        public DateTime HireDate { get; internal set; }
     }
 }
