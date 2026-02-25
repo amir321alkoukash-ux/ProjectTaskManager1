@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
-//using Microsoft.OpenApi.Models;
 using NLog.Web;
 using ProjectTaskManager.Data.Context;
 using ProjectTaskManager.Data.Repositories.Implementations;
