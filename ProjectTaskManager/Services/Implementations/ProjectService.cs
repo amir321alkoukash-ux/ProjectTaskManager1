@@ -1,19 +1,20 @@
 ﻿using AutoMapper;
+using Microsoft.EntityFrameworkCore;
+using ProjectTaskManager.Data.Repositories.Interfaces;
 using ProjectTaskManager.DTOs;
 using ProjectTaskManager.Entities;
-using ProjectTaskManager.Data.Repositories.Interfaces;
 using ProjectTaskManager.Services.Interfaces;
 
 namespace ProjectTaskManager.Services.Implementations
 {
     public class ProjectService : IProjectService
     {
-        private readonly IProjectRepository _projectRepository;
+        private readonly IRepository<Project> _projectRepository;
         private readonly IRepository<ProjectEmployee> _projectEmployeeRepository;
         private readonly IMapper _mapper;
 
         public ProjectService(
-            IProjectRepository projectRepository,
+            IRepository<Project> projectRepository,
             IRepository<ProjectEmployee> projectEmployeeRepository,
             IMapper mapper)
         {
@@ -24,7 +25,15 @@ namespace ProjectTaskManager.Services.Implementations
 
         public async Task<ProjectDto> GetProjectByIdAsync(int id)
         {
-            var project = await _projectRepository.GetProjectWithDetailsAsync(id);
+            var project = _projectRepository.FirstOrDefaultAsync(p => p.Id == id);
+
+            //await _context.Projects
+            //.Include(p => p.Company)
+            //.Include(p => p.Tasks)
+            //.Include(p => p.ProjectEmployees)
+            //    .ThenInclude(pe => pe.User)
+            //.FirstOrDefaultAsync(p => p.Id == id);
+
             if (project == null) throw new KeyNotFoundException("Project not found");
             return _mapper.Map<ProjectDto>(project);
         }

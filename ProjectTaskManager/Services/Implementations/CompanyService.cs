@@ -50,11 +50,12 @@ namespace ProjectTaskManager.Services.Implementations
         public async Task DeleteCompanyAsync(int id)
         {
             var company = await _companyRepository.GetByIdAsync(id);
-            if (company != null)
-            {
-                _companyRepository.Remove(company);
-                await _companyRepository.SaveChangesAsync();
-            }
+            if (company == null) throw new KeyNotFoundException("Company not found");
+
+            // Soft delete by setting InactiveDate
+            company.InactiveDate = DateTime.UtcNow;
+            _companyRepository.Update(company);
+            await _companyRepository.SaveChangesAsync();
         }
     }
 }

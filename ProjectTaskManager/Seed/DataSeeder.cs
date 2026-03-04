@@ -37,7 +37,17 @@ namespace ProjectTaskManager.Seed
                     var result = await userManager.CreateAsync(admin, "Admin@123");
                     if (result.Succeeded)
                     {
-                        await userManager.AddToRoleAsync(admin, "Admin");
+                        var roleResult = await userManager.AddToRoleAsync(admin, "Admin");
+                        if (!roleResult.Succeeded)
+                        {
+                            var errors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
+                            throw new Exception($"Failed to assign Admin role: {errors}");
+                        }
+                    }
+                    else
+                    {
+                        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                        throw new Exception($"Failed to create admin user: {errors}");
                     }
                 }
             }

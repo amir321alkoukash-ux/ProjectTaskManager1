@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi;
+using Microsoft.OpenApi.Models;
 using NLog.Web;
 using ProjectTaskManager.Data.Context;
 using ProjectTaskManager.Data.Repositories.Implementations;
@@ -37,7 +37,10 @@ builder.Services.AddSwaggerGen(c =>
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme, Id = "Bearer"
+                }
             },
             new string[] {}
         }
@@ -47,6 +50,9 @@ builder.Services.AddSwaggerGen(c =>
 // Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Register DbContext to resolve to the same ApplicationDbContext instance
+builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 
 // Identity
 builder.Services.AddIdentity<User, IdentityRole>()
@@ -87,6 +93,12 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 // HTTP Context Accessor
 builder.Services.AddHttpContextAccessor();
 
+// Repositories
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+builder.Services.AddScoped<ICompanyRepository, CompanyRepository>();
+builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+
 // Services
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -96,42 +108,37 @@ builder.Services.AddScoped<ICompanyService, CompanyService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 
-// Repositories
-builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-builder.Services.AddScoped<ICompanyRepository, CompanyRepository>();
-builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
-builder.Services.AddScoped<ITaskRepository, TaskRepository>();
-
 // Logging
 builder.Services.AddSingleton<ILoggerManager, LoggerManager>();
 builder.Logging.ClearProviders();
-builder.Host.UseNLog(); // Uses NLog.Web.AspNetCore
+builder.Host.UseNLog();
 
 var app = builder.Build();
 
-// Seed database
+// Seed database with migrations
 using (var scope = app.Services.CreateScope())
 {
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    // Apply pending migrations (creates tables if they don't exist)
+    await context.Database.MigrateAsync();   // Changed from EnsureCreatedAsync
+
+    // Now seed data
     await scope.ServiceProvider.SeedDatabaseAsync();
 }
 
 // Pipeline
 if (app.Environment.IsDevelopment())
 {
+    app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
-app.UseMiddleware<GlobalExceptionMiddleware>();
+//app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-
-internal class OpenApiReference
-{
-    public ReferenceType Type { get; set; }
-    public string Id { get; set; }
-}

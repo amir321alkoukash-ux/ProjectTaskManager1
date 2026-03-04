@@ -17,8 +17,8 @@ namespace ProjectTaskManager.Entities
         public string Mobile { get; set; }
 
         // Foreign key
-        public int CompanyId { get; set; }
-        public Company Company { get; set; }
+        public int? CompanyId { get; set; }
+        public Company? Company { get; set; }
 
         // Navigation properties
         public ICollection<ProjectEmployee> ProjectEmployees { get; set; }
