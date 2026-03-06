@@ -126,3 +126,23 @@
 2026-03-03 10:21:42.6773 Info Registered target NLog.Targets.Wrappers.AsyncTargetWrapper(Name=consoleTarget)
 2026-03-03 10:21:42.6871 Info NLog, Version=6.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 6.1.0.4914. Product version: 6.1.0+5b1846554f5a8f98878ca64cce5a485ca3b8275c. GlobalAssemblyCache: False
 2026-03-03 10:21:42.7319 Info Configuration initialized: TargetNames=fileTarget, consoleTarget, ConfigItems=27, AutoReload=true, FilePath=C:\Users\HP I7\Desktop\New folder (13)\dotnet\ProjectTaskManager\ProjectTaskManager\nlog.config
+2026-03-04 12:20:33.7022 Info Registered target NLog.Targets.Wrappers.AsyncTargetWrapper(Name=fileTarget)
+2026-03-04 12:20:33.8229 Info Registered target NLog.Targets.Wrappers.AsyncTargetWrapper(Name=consoleTarget)
+2026-03-04 12:20:33.8229 Info NLog, Version=6.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 6.1.0.4914. Product version: 6.1.0+5b1846554f5a8f98878ca64cce5a485ca3b8275c. GlobalAssemblyCache: False
+2026-03-04 12:20:33.9506 Info Configuration initialized: TargetNames=fileTarget, consoleTarget, ConfigItems=27, AutoReload=true, FilePath=C:\Users\HP I7\Desktop\New folder (13)\dotnet\ProjectTaskManager\ProjectTaskManager\nlog.config
+2026-03-04 12:40:16.9224 Info Registered target NLog.Targets.Wrappers.AsyncTargetWrapper(Name=fileTarget)
+2026-03-04 12:40:16.9398 Info Registered target NLog.Targets.Wrappers.AsyncTargetWrapper(Name=consoleTarget)
+2026-03-04 12:40:16.9496 Info NLog, Version=6.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 6.1.0.4914. Product version: 6.1.0+5b1846554f5a8f98878ca64cce5a485ca3b8275c. GlobalAssemblyCache: False
+2026-03-04 12:40:17.0033 Info Configuration initialized: TargetNames=fileTarget, consoleTarget, ConfigItems=27, AutoReload=true, FilePath=C:\Users\HP I7\Desktop\New folder (13)\dotnet\ProjectTaskManager\ProjectTaskManager\nlog.config
+2026-03-06 12:11:06.8626 Info Registered target NLog.Targets.Wrappers.AsyncTargetWrapper(Name=fileTarget)
+2026-03-06 12:11:06.8735 Info Registered target NLog.Targets.Wrappers.AsyncTargetWrapper(Name=consoleTarget)
+2026-03-06 12:11:06.8735 Info NLog, Version=6.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 6.1.0.4914. Product version: 6.1.0+5b1846554f5a8f98878ca64cce5a485ca3b8275c. GlobalAssemblyCache: False
+2026-03-06 12:11:06.9212 Info Configuration initialized: TargetNames=fileTarget, consoleTarget, ConfigItems=27, AutoReload=true, FilePath=C:\Users\HP I7\Desktop\New folder (13)\dotnet\ProjectTaskManager\ProjectTaskManager\nlog.config
+2026-03-06 13:32:49.5676 Info Registered target NLog.Targets.Wrappers.AsyncTargetWrapper(Name=fileTarget)
+2026-03-06 13:32:49.5772 Info Registered target NLog.Targets.Wrappers.AsyncTargetWrapper(Name=consoleTarget)
+2026-03-06 13:32:49.5772 Info NLog, Version=6.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 6.1.0.4914. Product version: 6.1.0+5b1846554f5a8f98878ca64cce5a485ca3b8275c. GlobalAssemblyCache: False
+2026-03-06 13:32:49.6155 Info Configuration initialized: TargetNames=fileTarget, consoleTarget, ConfigItems=27, AutoReload=true, FilePath=C:\Users\HP I7\Desktop\New folder (13)\dotnet\ProjectTaskManager\ProjectTaskManager\nlog.config
+2026-03-06 13:49:52.6314 Info Registered target NLog.Targets.Wrappers.AsyncTargetWrapper(Name=fileTarget)
+2026-03-06 13:49:52.6446 Info Registered target NLog.Targets.Wrappers.AsyncTargetWrapper(Name=consoleTarget)
+2026-03-06 13:49:52.6553 Info NLog, Version=6.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 6.1.0.4914. Product version: 6.1.0+5b1846554f5a8f98878ca64cce5a485ca3b8275c. GlobalAssemblyCache: False
+2026-03-06 13:49:52.6914 Info Configuration initialized: TargetNames=fileTarget, consoleTarget, ConfigItems=27, AutoReload=true, FilePath=C:\Users\HP I7\Desktop\New folder (13)\dotnet\ProjectTaskManager\ProjectTaskManager\nlog.config

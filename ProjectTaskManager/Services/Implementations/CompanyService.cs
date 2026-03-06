@@ -57,5 +57,21 @@ namespace ProjectTaskManager.Services.Implementations
             _companyRepository.Update(company);
             await _companyRepository.SaveChangesAsync();
         }
+
+        public async Task<IEnumerable<CompanyExportDto>> GetAllForExportAsync()
+        {
+            var companies = await _companyRepository.GetAllAsync();
+
+            return companies.Select(c => new CompanyExportDto
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Email = c.Email,
+                Location = c.Location,
+                ProjectCount = c.Projects?.Count ?? 0,
+                UserCount = c.Users?.Count ?? 0,
+                CreatedAt = c.CreatedAt
+            }).ToList();
+        }
     }
 }

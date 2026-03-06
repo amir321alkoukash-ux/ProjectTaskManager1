@@ -1,37 +1,67 @@
-﻿using Microsoft.Extensions.Configuration;
-using ProjectTaskManager.Services.Interfaces;
-using System.Net;
+﻿using System.Net;
 using System.Net.Mail;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using ProjectTaskManager.Services.Interfaces;
 
 namespace ProjectTaskManager.Services.Implementations
 {
     public class EmailService : IEmailService
     {
-        private readonly IConfiguration _configuration;
+        private readonly string _smtpServer;
+        private readonly int _smtpPort;
+        private readonly string _fromEmail;
+        private readonly string? _username;
+        private readonly string? _password;
 
         public EmailService(IConfiguration configuration)
         {
-            _configuration = configuration;
+            // Read from appsettings.json
+            _smtpServer = configuration["EmailSettings:SmtpServer"] ?? "smtp.gmail.com";
+            _smtpPort = int.Parse(configuration["EmailSettings:SmtpPort"] ?? "587");
+            _fromEmail = configuration["EmailSettings:FromEmail"] ?? "noreply@projecttaskmanager.com";
+            _username = configuration["EmailSettings:Username"]; // Optional
+            _password = configuration["EmailSettings:Password"]; // Optional
         }
 
         public async Task SendEmailAsync(string to, string subject, string body)
         {
-            var smtpServer = _configuration["EmailSettings:SmtpServer"];
-            var smtpPort = int.Parse(_configuration["EmailSettings:SmtpPort"]);
-            var fromEmail = _configuration["EmailSettings:FromEmail"];
+            using var message = new MailMessage(_fromEmail, to, subject, body);
+            using var client = new SmtpClient(_smtpServer, _smtpPort);
 
-            using var client = new SmtpClient(smtpServer, smtpPort);
-            using var message = new MailMessage(fromEmail, to, subject, body);
-            // Configure credentials, SSL, etc. as needed
+            client.EnableSsl = true;
+
+            // Add credentials if provided
+            if (!string.IsNullOrEmpty(_username) && !string.IsNullOrEmpty(_password))
+            {
+                client.Credentials = new NetworkCredential(_username, _password);
+            }
+
             await client.SendMailAsync(message);
         }
 
-        public async Task SendPasswordResetEmailAsync(string email, string resetLink)
+        public async Task SendEmailWithAttachmentAsync(string to, string subject, string body, byte[] attachment, string attachmentName)
         {
-            string subject = "Password Reset Request";
-            string body = $"Click the link to reset your password: {resetLink}";
-            await SendEmailAsync(email, subject, body);
+            using var message = new MailMessage(_fromEmail, to, subject, body);
+            using var client = new SmtpClient(_smtpServer, _smtpPort);
+
+            // Add attachment
+            using var ms = new MemoryStream(attachment);
+            message.Attachments.Add(new Attachment(ms, attachmentName));
+
+            client.EnableSsl = true;
+
+            // Add credentials if provided
+            if (!string.IsNullOrEmpty(_username) && !string.IsNullOrEmpty(_password))
+            {
+                client.Credentials = new NetworkCredential(_username, _password);
+            }
+
+            await client.SendMailAsync(message);
+        }
+
+        public Task SendPasswordResetEmailAsync(string to, string resetLink)
+        {
+            throw new NotImplementedException();
         }
     }
 }

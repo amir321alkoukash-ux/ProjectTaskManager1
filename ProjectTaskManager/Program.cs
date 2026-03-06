@@ -1,3 +1,5 @@
+using Hangfire;
+using Hangfire.SqlServer;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +10,7 @@ using ProjectTaskManager.Data.Context;
 using ProjectTaskManager.Data.Repositories.Implementations;
 using ProjectTaskManager.Data.Repositories.Interfaces;
 using ProjectTaskManager.Entities;
+using ProjectTaskManager.Jobs; 
 using ProjectTaskManager.Mappings;
 using ProjectTaskManager.Middlewares;
 using ProjectTaskManager.Seed;
@@ -59,6 +62,23 @@ builder.Services.AddIdentity<User, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
+// ✅ HANGFIRE CONFIGURATION (Moved before JWT for better organization)
+builder.Services.AddHangfire(configuration => configuration
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection"), new SqlServerStorageOptions
+    {
+        CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+        SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+        QueuePollInterval = TimeSpan.Zero,
+        UseRecommendedIsolationLevel = true,
+        DisableGlobalLocks = true
+    }));
+
+// Add Hangfire server
+builder.Services.AddHangfireServer();
+
 // JWT
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var key = Encoding.ASCII.GetBytes(jwtSettings["Secret"]);
@@ -107,6 +127,9 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICompanyService, CompanyService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<IExcelExportService, ExcelExportService>();
+builder.Services.AddScoped<IPdfExportService, PdfExportService>();
+builder.Services.AddScoped<ExportJobs>();
 
 // Logging
 builder.Services.AddSingleton<ILoggerManager, LoggerManager>();
@@ -121,13 +144,13 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
     // Apply pending migrations (creates tables if they don't exist)
-    await context.Database.MigrateAsync();   // Changed from EnsureCreatedAsync
+    await context.Database.MigrateAsync();
 
     // Now seed data
     await scope.ServiceProvider.SeedDatabaseAsync();
 }
 
-// Pipeline
+// ✅ PIPELINE CONFIGURATION
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -136,7 +159,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-//app.UseMiddleware<GlobalExceptionMiddleware>();
+
+// ✅ Hangfire Dashboard (place before authentication if you want it public, or after if you want to secure it)
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    DashboardTitle = "ProjectTaskManager Jobs",
+    Authorization = new[] { new HangfireAuthorizationFilter() }
+});
+
+// Uncomment if you want to use your custom middleware
+// app.UseMiddleware<GlobalExceptionMiddleware>();
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

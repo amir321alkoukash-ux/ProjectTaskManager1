@@ -7,6 +7,7 @@ namespace ProjectTaskManager.Services.Interfaces
         Task<CompanyDto> GetCompanyByIdAsync(int id);
         Task<IEnumerable<CompanyDto>> GetAllCompaniesAsync();
         Task<CompanyDto> CreateCompanyAsync(CompanyDto companyDto);
+        Task<IEnumerable<CompanyExportDto>> GetAllForExportAsync();
         Task UpdateCompanyAsync(int id, CompanyDto companyDto);
         Task DeleteCompanyAsync(int id);
     }
