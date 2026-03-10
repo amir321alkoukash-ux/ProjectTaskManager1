@@ -10,7 +10,7 @@ using ProjectTaskManager.Data.Context;
 using ProjectTaskManager.Data.Repositories.Implementations;
 using ProjectTaskManager.Data.Repositories.Interfaces;
 using ProjectTaskManager.Entities;
-using ProjectTaskManager.Jobs; 
+using ProjectTaskManager.Jobs;
 using ProjectTaskManager.Mappings;
 using ProjectTaskManager.Middlewares;
 using ProjectTaskManager.Seed;
@@ -18,6 +18,7 @@ using ProjectTaskManager.Services.Implementations;
 using ProjectTaskManager.Services.Interfaces;
 using ProjectTaskManager.Services.Logging;
 using System.Text;
+using QuestPDF.Infrastructure; // ✅ ADD THIS
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,7 +63,7 @@ builder.Services.AddIdentity<User, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-// ✅ HANGFIRE CONFIGURATION (Moved before JWT for better organization)
+// HANGFIRE CONFIGURATION
 builder.Services.AddHangfire(configuration => configuration
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
     .UseSimpleAssemblyNameTypeSerializer()
@@ -136,6 +137,9 @@ builder.Services.AddSingleton<ILoggerManager, LoggerManager>();
 builder.Logging.ClearProviders();
 builder.Host.UseNLog();
 
+// ✅ SET QUESTPDF LICENSE (Community is free)
+QuestPDF.Settings.License = LicenseType.Community;
+
 var app = builder.Build();
 
 // Seed database with migrations
@@ -160,7 +164,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// ✅ Hangfire Dashboard (place before authentication if you want it public, or after if you want to secure it)
+// Hangfire Dashboard
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
     DashboardTitle = "ProjectTaskManager Jobs",

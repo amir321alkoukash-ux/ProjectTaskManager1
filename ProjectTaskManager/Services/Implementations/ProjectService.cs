@@ -25,14 +25,8 @@ namespace ProjectTaskManager.Services.Implementations
 
         public async Task<ProjectDto> GetProjectByIdAsync(int id)
         {
-            var project = _projectRepository.FirstOrDefaultAsync(p => p.Id == id);
-
-            //await _context.Projects
-            //.Include(p => p.Company)
-            //.Include(p => p.Tasks)
-            //.Include(p => p.ProjectEmployees)
-            //    .ThenInclude(pe => pe.User)
-            //.FirstOrDefaultAsync(p => p.Id == id);
+            // ✅ Fixed: added await
+            var project = await _projectRepository.FirstOrDefaultAsync(p => p.Id == id);
 
             if (project == null) throw new KeyNotFoundException("Project not found");
             return _mapper.Map<ProjectDto>(project);
