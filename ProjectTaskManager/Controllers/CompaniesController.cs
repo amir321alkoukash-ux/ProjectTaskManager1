@@ -1,115 +1,139 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using ProjectTaskManager.Entities;
+﻿using Hangfire;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using ProjectTaskManager.DTOs;
+using ProjectTaskManager.Jobs;
 using ProjectTaskManager.Services.Interfaces;
 
 namespace ProjectTaskManager.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class CompaniesController : ControllerBase
     {
         private readonly ICompanyService _companyService;
+        private readonly IExcelExportService _excelExportService;
+        private readonly IPdfExportService _pdfExportService;
         private readonly ILogger<CompaniesController> _logger;
 
-        public CompaniesController(ICompanyService companyService, ILogger<CompaniesController> logger)
+        // Single constructor with all dependencies
+        public CompaniesController(
+            ICompanyService companyService,
+            IExcelExportService excelExportService,
+            IPdfExportService pdfExportService,
+            ILogger<CompaniesController> logger)
         {
             _companyService = companyService;
+            _excelExportService = excelExportService;
+            _pdfExportService = pdfExportService;
             _logger = logger;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Company>>> GetCompanies()
+        public async Task<IActionResult> GetAll()
         {
-            try
-            {
-                var companies = await _companyService.GetAllCompaniesAsync();
-                return Ok(companies);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting companies");
-                return StatusCode(500, "Internal server error");
-            }
+            var companies = await _companyService.GetAllCompaniesAsync();
+            return Ok(companies);
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Company>> GetCompany(int id)
+        public async Task<IActionResult> GetById(int id)
         {
             try
             {
                 var company = await _companyService.GetCompanyByIdAsync(id);
-                if (company == null)
-                    return NotFound();
-
                 return Ok(company);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting company with ID: {Id}", id);
-                return StatusCode(500, "Internal server error");
-            }
-        }
-
-        [HttpPost]
-        public async Task<ActionResult<Company>> CreateCompany(Company company)
-        {
-            try
-            {
-                var createdCompany = await _companyService.CreateCompanyAsync(company);
-                return CreatedAtAction(nameof(GetCompany), new { id = createdCompany.Id }, createdCompany);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating company");
-                return StatusCode(500, "Internal server error");
-            }
-        }
-
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateCompany(int id, Company company)
-        {
-            try
-            {
-                if (id != company.Id)
-                    return BadRequest("ID mismatch");
-
-                var updatedCompany = await _companyService.UpdateCompanyAsync(company);
-                return Ok(updatedCompany);
             }
             catch (KeyNotFoundException)
             {
                 return NotFound();
             }
-            catch (InvalidOperationException ex)
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Create(CompanyDto dto)
+        {
+            var created = await _companyService.CreateCompanyAsync(dto);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        }
+
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Update(int id, CompanyDto dto)
+        {
+            try
             {
-                return BadRequest(ex.Message);
+                await _companyService.UpdateCompanyAsync(id, dto);
+                return NoContent();
             }
-            catch (Exception ex)
+            catch (KeyNotFoundException)
             {
-                _logger.LogError(ex, "Error updating company with ID: {Id}", id);
-                return StatusCode(500, "Internal server error");
+                return NotFound();
             }
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteCompany(int id)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            await _companyService.DeleteCompanyAsync(id);
+            return NoContent();
+        }
+
+        [HttpGet("export")]
+        public async Task<IActionResult> ExportCompanies([FromQuery] string format = "excel")
         {
             try
             {
-                var result = await _companyService.DeleteCompanyAsync(id);
-                if (!result)
-                    return NotFound();
+                var companies = await _companyService.GetAllForExportAsync();
+                byte[] fileBytes;
+                string contentType;
+                string fileName;
 
-                return NoContent();
+                if (format.ToLower() == "pdf")
+                {
+                    fileBytes = await _pdfExportService.GenerateCompanyReportAsync(companies);
+                    contentType = "application/pdf";
+                    fileName = $"Companies_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+                }
+                else // default to excel
+                {
+                    fileBytes = await _excelExportService.GenerateCompanyReportAsync(companies);
+                    contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                    fileName = $"Companies_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+                }
+
+                return File(fileBytes, contentType, fileName);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting company with ID: {Id}", id);
-                return StatusCode(500, "Internal server error");
+                _logger.LogError(ex, "Error exporting companies");
+                return StatusCode(500, "An error occurred while generating the export.");
+            }
+        }
+
+        [HttpGet("export/background")]
+        public IActionResult ExportCompaniesBackground([FromQuery] string email)
+        {
+            try
+            {
+                // Enqueue a fire-and-forget background job
+                var jobId = BackgroundJob.Enqueue<ExportJobs>(x => x.GenerateAndEmailExport(email));
+
+                return Accepted(new
+                {
+                    jobId,
+                    message = "Export started. You will receive an email when ready.",
+                    dashboardUrl = "/hangfire"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting background export");
+                return StatusCode(500, "Failed to start export job.");
             }
         }
     }
